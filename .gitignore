@@ -1,4 +1,3 @@
 target/
 .idea/
-stock-crawlers.iml
-stocks.iml
+*.iml

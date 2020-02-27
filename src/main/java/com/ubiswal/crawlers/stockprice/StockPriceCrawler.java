@@ -1,7 +1,11 @@
 package com.ubiswal.crawlers.stockprice;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
@@ -14,26 +18,27 @@ import java.io.*;
 import org.apache.http.HttpException;
 
 public class StockPriceCrawler {
-    public StockPriceCrawler(List<String> stockSymbols) {
-        final AmazonS3 s3 = AmazonS3ClientBuilder.standard().withRegion(Regions.DEFAULT_REGION).build();
-        List<Bucket> buckets = s3.listBuckets();
-        System.out.println("Your Amazon S3 buckets are:");
-        for (Bucket b : buckets) {
-            System.out.println("* " + b.getName());
-        }
+    private String apiKey;
+    private AmazonS3 s3Client;
+    private List<String> stockSymbols;
+    private String s3BucketName;
+
+    public StockPriceCrawler(AmazonS3 s3Client, String apiKey, List<String> stockSymbols, String s3BucketName) {
+        this.apiKey = apiKey;
+        this.s3Client = s3Client;
+        this.stockSymbols = stockSymbols;
+        this.s3BucketName = s3BucketName;
     }
 
-    public String sendGet() throws HttpException {
+    public String sendGet(String stockSymbol) throws HttpException {
 
         URL urlForGetRequest = null;
         try {
-            urlForGetRequest = new URL("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=INTC&interval=5min&apikey=2Q4MMOXUEBV2E9XY");
-
+            urlForGetRequest = new URL(String.format("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=%s&interval=5min&apikey=%s", stockSymbol, apiKey));
             String readLine = null;
             HttpURLConnection connection = null;
             connection = (HttpURLConnection) urlForGetRequest.openConnection();
             connection.setRequestMethod("GET");
-            //connection.setRequestProperty("userId", "a1bcdef"); // set userId its a sample here
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 BufferedReader in = new BufferedReader(
@@ -52,4 +57,28 @@ public class StockPriceCrawler {
             throw new HttpException("GET REQUEST DID NOT WORK!! " + e.getMessage());
         }
     }
+
+    private void uploadToS3(String s3KeyName, String content) throws HttpException {
+        try {
+            s3Client.putObject(s3BucketName, s3KeyName, content);
+        } catch (SdkClientException e) {
+            throw new HttpException("Failed to upload to s3 because " + e.getMessage());
+        }
+    }
+
+    public void collectStockPricesForAll() {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        Date date = new Date();
+        String rootFolderName = formatter.format(date);
+        for (String symbol : stockSymbols) {
+            try {
+                String content = sendGet(symbol);
+                String s3FileName = String.format("%s/%s/stock.json", rootFolderName, symbol);
+                uploadToS3(s3FileName, content);
+            } catch (HttpException e) {
+                System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());
+            }
+        }
+    }
+
 }

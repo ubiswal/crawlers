@@ -1,4 +1,4 @@
-package com.ubiswal.crawlers.main;
+package com.ubiswal.main;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
@@ -7,13 +7,11 @@ import com.amazonaws.services.s3.model.S3Object;
 import com.amazonaws.services.s3.model.S3ObjectInputStream;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ubiswal.config.Config;
+import com.ubiswal.crawlers.stockprice.StockNewsCrawler;
 import com.ubiswal.crawlers.stockprice.StockPriceCrawler;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpException;
@@ -31,6 +29,9 @@ public class Main {
 
         StockPriceCrawler s = new StockPriceCrawler(s3, cfg.getApiKey(), cfg.getStockSymbols(), BUCKETNAME );
         s.collectStockPricesForAll();
+
+        StockNewsCrawler n = new StockNewsCrawler(s3, cfg.getNewsApiKey(), cfg.getStockSymbols(), BUCKETNAME);
+        n.collectStockNewsForAll();
     }
 
     private static Config getConfig(final AmazonS3 s3Client) throws IOException {

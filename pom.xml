@@ -60,7 +60,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.ubiswal.crawlers.main.Main</mainClass>
+                            <mainClass>com.ubiswal.main.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

@@ -1,7 +1,9 @@
 package com.ubiswal.crawlers.stockprice;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 import com.amazonaws.AmazonServiceException;
@@ -69,11 +71,15 @@ public class StockPriceCrawler {
     public void collectStockPricesForAll() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         Date date = new Date();
+        Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
+        calendar.setTime(date);   // assigns calendar to given date
+        int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
+
         String rootFolderName = formatter.format(date);
         for (String symbol : stockSymbols) {
             try {
                 String content = sendGet(symbol);
-                String s3FileName = String.format("%s/%s/stock.json", rootFolderName, symbol);
+                String s3FileName = String.format("%s/%s/%s/stock.json", rootFolderName, hour, symbol);
                 uploadToS3(s3FileName, content);
             } catch (HttpException e) {
                 System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());

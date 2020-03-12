@@ -11,16 +11,15 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 public class StockNewsCrawler {
     private String apiKey;
     private AmazonS3 s3Client;
-    private List<String> stockSymbols;
+    private Map<String, String> stockSymbols;
     private String s3BucketName;
 
-    public StockNewsCrawler(AmazonS3 s3Client, String apiKey, List<String> stockSymbols, String s3BucketName) {
+    public StockNewsCrawler(AmazonS3 s3Client, String apiKey, Map<String, String> stockSymbols, String s3BucketName) {
         this.apiKey = apiKey;
         this.s3Client = s3Client;
         this.stockSymbols = stockSymbols;
@@ -68,10 +67,14 @@ public class StockNewsCrawler {
         Date date = new Date();
         String rootFolderName = formatter.format(date);
         String newsDate = formatter.format(date);
-        for (String symbol : stockSymbols) {
+        Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
+        calendar.setTime(date);   // assigns calendar to given date
+        int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
+
+        for (Map.Entry<String, String> symbol : stockSymbols.entrySet()) {
             try {
-                String content = sendGet(symbol, newsDate, newsDate);
-                String s3FileName = String.format("%s/%s/news.json", rootFolderName, symbol);
+                String content = sendGet(symbol.getValue(), newsDate, newsDate);
+                String s3FileName = String.format("%s/%s/%s/news.json", rootFolderName, hour, symbol.getKey());
                 uploadToS3(s3FileName, content);
             } catch (HttpException e) {
                 System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());

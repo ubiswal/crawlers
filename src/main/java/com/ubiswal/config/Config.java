@@ -1,35 +1,22 @@
 package com.ubiswal.config;
 
+import lombok.Setter;
+import lombok.Getter;
 import java.util.List;
+import java.util.Map;
 
 public class Config {
+    @Getter
+    @Setter
     private String apiKey;// alpha vantage api key
+    @Getter
+    @Setter
     private List<String> stockSymbols;
+    @Getter
+    @Setter
     private String newsApiKey; //newsapi api key
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public List<String> getStockSymbols() {
-        return stockSymbols;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public void setStockSymbols(List<String> stockSymbols) {
-        this.stockSymbols = stockSymbols;
-    }
-
-    public String getNewsApiKey() {
-        return this.newsApiKey;
-    }
-
-    public void setNewsApiKey(String newsApiKey) {
-        this.newsApiKey = newsApiKey;
-    }
-
+    @Getter
+    @Setter
+    private Map<String, String> stockNewsSearchStrings;
 
 }

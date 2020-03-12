@@ -30,7 +30,7 @@ public class Main {
         StockPriceCrawler s = new StockPriceCrawler(s3, cfg.getApiKey(), cfg.getStockSymbols(), BUCKETNAME );
         s.collectStockPricesForAll();
 
-        StockNewsCrawler n = new StockNewsCrawler(s3, cfg.getNewsApiKey(), cfg.getStockSymbols(), BUCKETNAME);
+        StockNewsCrawler n = new StockNewsCrawler(s3, cfg.getNewsApiKey(), cfg.getStockNewsSearchStrings(), BUCKETNAME);
         n.collectStockNewsForAll();
     }
 
@@ -47,7 +47,7 @@ public class Main {
             throw e;
         }
 
-        //use jackson for json to class conversion
+        //use jackson for json to class conversion for the Config
         ObjectMapper mapper = new ObjectMapper();
         try {
             // JSON file to Java object

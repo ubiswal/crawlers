@@ -12,10 +12,26 @@ import com.ubiswal.crawlers.stockprice.StockPriceCrawler;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpException;
 
+class CrawlerCron extends TimerTask {
+    private final StockPriceCrawler stockPriceCrawler;
+    private final StockNewsCrawler stockNewsCrawler;
+    CrawlerCron(StockPriceCrawler stockPriceCrawler, StockNewsCrawler stockNewsCrawler){
+        this.stockPriceCrawler = stockPriceCrawler;
+        this.stockNewsCrawler = stockNewsCrawler;
+    }
+
+    @Override
+    public void run() {
+        stockPriceCrawler.collectStockPricesForAll();
+        stockNewsCrawler.collectStockNewsForAll();
+    }
+}
 
 public class Main {
     private static final String BUCKETNAME = "stocks-testing" ;
@@ -25,13 +41,13 @@ public class Main {
         final AmazonS3 s3 = AmazonS3ClientBuilder.standard().withRegion(Regions.US_EAST_1).build();
         Config cfg = getConfig(s3);
 
-        System.out.println(cfg.getStockSymbols());
-
         StockPriceCrawler s = new StockPriceCrawler(s3, cfg.getApiKey(), cfg.getStockSymbols(), BUCKETNAME );
-        s.collectStockPricesForAll();
-
         StockNewsCrawler n = new StockNewsCrawler(s3, cfg.getNewsApiKey(), cfg.getStockNewsSearchStrings(), BUCKETNAME);
-        n.collectStockNewsForAll();
+
+        CrawlerCron crawlerCron = new CrawlerCron(s, n);
+
+        Timer timer = new Timer();
+        timer.schedule(crawlerCron, 0, 7200000);
     }
 
     private static Config getConfig(final AmazonS3 s3Client) throws IOException {
@@ -59,4 +75,5 @@ public class Main {
         }
 
     }
+
 }

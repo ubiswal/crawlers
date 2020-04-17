@@ -30,7 +30,7 @@ public class StockNewsCrawler {
 
         URL urlForGetRequest = null;
         try {
-            urlForGetRequest = new URL(String.format("http://newsapi.org/v2/everything?q=%s&from=%s&to=%s&sortBy=popularity&apiKey=%s", stockSymbol, fromDate, toDate, apiKey));
+            urlForGetRequest = new URL(String.format("http://newsapi.org/v2/everything?q=%s&from=%s&to=%s&language=en&sortBy=popularity&apiKey=%s", stockSymbol, fromDate, toDate, apiKey));
             String readLine = null;
             HttpURLConnection connection = null;
             connection = (HttpURLConnection) urlForGetRequest.openConnection();

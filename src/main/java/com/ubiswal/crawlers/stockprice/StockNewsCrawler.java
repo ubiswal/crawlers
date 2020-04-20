@@ -106,11 +106,10 @@ public class StockNewsCrawler {
     public void collectStockNewsForAll() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         Date date = new Date();
-        String rootFolderName = formatter.format(date);
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         String newsDate = formatter.format(date);
         Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
         calendar.setTime(date);   // assigns calendar to given date
-        int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
 
         List<List<String>> batches = MiscUtils.partition(new ArrayList<>(stockSymbols.keySet()), 5);
         for (List<String> batch : batches) {
@@ -120,8 +119,7 @@ public class StockNewsCrawler {
                     // The parsing to json is purely for validation purposes
                     ObjectMapper mapper = new ObjectMapper();
                     mapper.readValue(content, ListOfArticles.class);
-
-                    String s3FileName = String.format("%s/%s/%s/news.json", rootFolderName, hour, symbol);
+                    String s3FileName = MiscUtils.getS3FolderPath(symbol, "news.json");
                     uploadToS3(s3FileName, content);
                 } catch (HttpException e) {
                     System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());

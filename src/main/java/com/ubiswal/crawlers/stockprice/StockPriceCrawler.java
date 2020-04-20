@@ -96,6 +96,7 @@ public class StockPriceCrawler {
 
     private void uploadToS3(String s3KeyName, String content) throws HttpException {
         try {
+            System.out.println(String.format("Uploading to %s: %s", s3BucketName, s3KeyName));
             s3Client.putObject(s3BucketName, s3KeyName, content);
         } catch (SdkClientException e) {
             throw new HttpException("Failed to upload to s3 because " + e.getMessage());
@@ -103,14 +104,6 @@ public class StockPriceCrawler {
     }
 
     public void collectStockPricesForAll() {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        Date date = new Date();
-        Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
-        calendar.setTime(date);   // assigns calendar to given date
-        int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
-
-        String rootFolderName = formatter.format(date);
         List<List<String>> batches = MiscUtils.partition(stockSymbols, 5);
         for (List<String> batch : batches) {
             for (String symbol : batch) {
@@ -119,8 +112,7 @@ public class StockPriceCrawler {
                     // The parsing into json is purely for validation purposes
                     ObjectMapper mapper = new ObjectMapper();
                     mapper.readValue(content, StockPrices.class);
-
-                    String s3FileName = String.format("%s/%s/%s/stock.json", rootFolderName, hour, symbol);
+                    String s3FileName = MiscUtils.getS3FolderPath(symbol, "stock.json");
                     uploadToS3(s3FileName, content);
                 } catch (HttpException e) {
                     System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());

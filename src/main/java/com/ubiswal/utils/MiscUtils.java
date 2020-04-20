@@ -1,7 +1,7 @@
 package com.ubiswal.utils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class MiscUtils {
     public static List<List<String>> partition(List<String> fullList, int batchSize) {
@@ -14,5 +14,16 @@ public class MiscUtils {
             retval.add(fullList.subList(i, fullList.size()));
         }
         return retval;
+    }
+
+    public static String getS3FolderPath(String symbol, String fileName) {
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        Date date = new Date();
+        Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
+        calendar.setTime(date);   // assigns calendar to given date
+        int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
+        String rootFolderName = formatter.format(date);
+        return String.format("%s/%s/%s/%s", rootFolderName, hour, symbol, fileName);
     }
 }

@@ -1,23 +1,58 @@
 package com.ubiswal.crawlers.stockprice;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.List;
+import java.util.*;
 
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.SdkClientException;
-import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.S3Object;
 
 import java.net.*;
 import java.io.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ubiswal.utils.MiscUtils;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.http.HttpException;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+class TimeSeriesEntry {
+    @Getter
+    @Setter
+    @JsonProperty("1. open")
+    private float open;
+    @Getter
+    @Setter
+    @JsonProperty("2. high")
+    private float high;
+    @Getter
+    @Setter
+    @JsonProperty("3. low")
+    private float low;
+    @Getter
+    @Setter
+    @JsonProperty("4. close")
+    private float close;
+    @Getter
+    @Setter
+    @JsonProperty("5. volume")
+    private int volume;
+
+}
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+class StockPrices {
+    //private String symbol;
+    @Getter
+    @Setter
+    @JsonProperty("Time Series (5min)")
+    private Map<String, TimeSeriesEntry> timeSeriesEntries;
+}
+
 
 public class StockPriceCrawler {
     private String apiKey;
@@ -32,9 +67,8 @@ public class StockPriceCrawler {
         this.s3BucketName = s3BucketName;
     }
 
-    public String sendGet(String stockSymbol) throws HttpException {
-
-        URL urlForGetRequest = null;
+    public String getStockPriceForSymbol(String stockSymbol) throws HttpException {
+        URL urlForGetRequest;
         try {
             urlForGetRequest = new URL(String.format("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=%s&interval=5min&apikey=%s", stockSymbol, apiKey));
             String readLine = null;
@@ -70,21 +104,45 @@ public class StockPriceCrawler {
 
     public void collectStockPricesForAll() {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         Date date = new Date();
         Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
         calendar.setTime(date);   // assigns calendar to given date
         int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
 
         String rootFolderName = formatter.format(date);
-        for (String symbol : stockSymbols) {
+        List<List<String>> batches = MiscUtils.partition(stockSymbols, 5);
+        for (List<String> batch : batches) {
+            for (String symbol : batch) {
+                try {
+                    String content = getStockPriceForSymbol(symbol);
+                    // The parsing into json is purely for validation purposes
+                    ObjectMapper mapper = new ObjectMapper();
+                    mapper.readValue(content, StockPrices.class);
+
+                    String s3FileName = String.format("%s/%s/%s/stock.json", rootFolderName, hour, symbol);
+                    uploadToS3(s3FileName, content);
+                } catch (HttpException e) {
+                    System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());
+                } catch (JsonParseException e) {
+                    System.out.println(String.format("Failed to parse downloaded response for symbol %s", symbol));
+                    e.printStackTrace();
+                } catch (JsonMappingException e) {
+                    System.out.println(String.format("Failed to parse downloaded response for symbol %s", symbol));
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    System.out.println(String.format("Failed to parse downloaded response for symbol %s", symbol));
+                    e.printStackTrace();
+                }
+            }
             try {
-                String content = sendGet(symbol);
-                String s3FileName = String.format("%s/%s/%s/stock.json", rootFolderName, hour, symbol);
-                uploadToS3(s3FileName, content);
-            } catch (HttpException e) {
-                System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());
+                System.out.println(String.format("Made calls for %s. Going to sleep for 2 minutes", batch));
+                Thread.sleep(120 * 1000, 0);
+            } catch (InterruptedException e) {
+                System.out.println("[WARN] Interrupted while sleeping");
             }
         }
+        System.out.println("Done.");
     }
 
 }

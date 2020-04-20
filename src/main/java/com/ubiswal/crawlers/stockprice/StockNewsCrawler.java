@@ -3,15 +3,55 @@ package com.ubiswal.crawlers.stockprice;
 
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ubiswal.utils.MiscUtils;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.http.HttpException;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Source{
+    @Getter
+    @Setter
+    private String name;
+}
+@JsonIgnoreProperties(ignoreUnknown = true)
+class Article{
+    @Getter
+    @Setter
+    private Source source;
+    @Getter
+    @Setter
+    private String author;
+    @Getter
+    @Setter
+    private String description;
+    @Getter
+    @Setter
+    private String url;
+    @Getter
+    @Setter
+    private String urlToImage;
+}
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+class ListOfArticles{
+    @Getter
+    @Setter
+    private List<Article> articles;
+}
 
 public class StockNewsCrawler {
     private String apiKey;
@@ -56,6 +96,7 @@ public class StockNewsCrawler {
 
     private void uploadToS3(String s3KeyName, String content) throws HttpException {
         try {
+            System.out.println(String.format("Uploading %s to S3", s3KeyName));
             s3Client.putObject(s3BucketName, s3KeyName, content);
         } catch (SdkClientException e) {
             throw new HttpException("Failed to upload to s3 because " + e.getMessage());
@@ -71,16 +112,39 @@ public class StockNewsCrawler {
         calendar.setTime(date);   // assigns calendar to given date
         int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
 
-        for (Map.Entry<String, String> symbol : stockSymbols.entrySet()) {
+        List<List<String>> batches = MiscUtils.partition(new ArrayList<>(stockSymbols.keySet()), 5);
+        for (List<String> batch : batches) {
+            for (String symbol : batch) {
+                try {
+                    String content = sendGet(stockSymbols.get(symbol), newsDate, newsDate);
+                    // The parsing to json is purely for validation purposes
+                    ObjectMapper mapper = new ObjectMapper();
+                    mapper.readValue(content, ListOfArticles.class);
+
+                    String s3FileName = String.format("%s/%s/%s/news.json", rootFolderName, hour, symbol);
+                    uploadToS3(s3FileName, content);
+                } catch (HttpException e) {
+                    System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());
+                } catch (JsonParseException e) {
+                    System.out.println(String.format("Failed to parse downloaded news for symbol %s", symbol));
+                    e.printStackTrace();
+                } catch (JsonMappingException e) {
+                    System.out.println(String.format("Failed to parse downloaded news for symbol %s", symbol));
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    System.out.println(String.format("Failed to parse downloaded news for symbol %s", symbol));
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
             try {
-                String content = sendGet(symbol.getValue(), newsDate, newsDate);
-                String s3FileName = String.format("%s/%s/%s/news.json", rootFolderName, hour, symbol.getKey());
-                uploadToS3(s3FileName, content);
-            } catch (HttpException e) {
-                System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());
+                System.out.println(String.format("Fetched news for %s. Going to sleep for 2 mins.", batch));
+                Thread.sleep(120*1000, 0);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }
-
 }
 

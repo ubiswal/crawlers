@@ -111,7 +111,11 @@ public class StockPriceCrawler {
                     String content = getStockPriceForSymbol(symbol);
                     // The parsing into json is purely for validation purposes
                     ObjectMapper mapper = new ObjectMapper();
-                    mapper.readValue(content, StockPrices.class);
+                    StockPrices obj = mapper.readValue(content, StockPrices.class);
+                    if (obj == null) {
+                        System.out.println(String.format("Failed to fetch data for %s. You may be out of quota.", symbol));
+                        continue;
+                    }
                     String s3FileName = MiscUtils.getS3FolderPath(symbol, "stock.json");
                     uploadToS3(s3FileName, content);
                 } catch (HttpException e) {

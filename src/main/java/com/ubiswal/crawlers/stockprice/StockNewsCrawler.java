@@ -119,7 +119,7 @@ public class StockNewsCrawler {
                     // The parsing to json is purely for validation purposes
                     ObjectMapper mapper = new ObjectMapper();
                     mapper.readValue(content, ListOfArticles.class);
-                    String s3FileName = MiscUtils.getS3FolderPath(symbol, "news.json");
+                    String s3FileName = MiscUtils.getS3FolderPath(date, symbol, "news.json");
                     uploadToS3(s3FileName, content);
                 } catch (HttpException e) {
                     System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());

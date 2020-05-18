@@ -104,6 +104,7 @@ public class StockPriceCrawler {
     }
 
     public void collectStockPricesForAll() {
+        Date currentDate = new Date();
         List<List<String>> batches = MiscUtils.partition(stockSymbols, 5);
         for (List<String> batch : batches) {
             for (String symbol : batch) {
@@ -112,11 +113,11 @@ public class StockPriceCrawler {
                     // The parsing into json is purely for validation purposes
                     ObjectMapper mapper = new ObjectMapper();
                     StockPrices obj = mapper.readValue(content, StockPrices.class);
-                    if (obj == null) {
+                    if (obj == null || obj.getTimeSeriesEntries() == null) {
                         System.out.println(String.format("Failed to fetch data for %s. You may be out of quota.", symbol));
                         continue;
                     }
-                    String s3FileName = MiscUtils.getS3FolderPath(symbol, "stock.json");
+                    String s3FileName = MiscUtils.getS3FolderPath(currentDate, symbol, "stock.json");
                     uploadToS3(s3FileName, content);
                 } catch (HttpException e) {
                     System.out.println("Failed while uploading  stocks for " + symbol + " because " + e.getMessage());

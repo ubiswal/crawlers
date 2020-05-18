@@ -16,10 +16,9 @@ public class MiscUtils {
         return retval;
     }
 
-    public static String getS3FolderPath(String symbol, String fileName) {
+    public static String getS3FolderPath(Date date, String symbol, String fileName) {
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        Date date = new Date();
         Calendar calendar = GregorianCalendar.getInstance(); // creates a new calendar instance
         calendar.setTime(date);   // assigns calendar to given date
         int hour = calendar.get(Calendar.HOUR_OF_DAY); // gets hour in 24h format
